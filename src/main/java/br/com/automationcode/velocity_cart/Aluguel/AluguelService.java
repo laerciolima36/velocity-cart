@@ -114,8 +114,10 @@ public class AluguelService {
     }
 
     public void verificarAlugueis() {
+        System.out.println("Verificando aluguéis ativos...");
         alugueisAtivos.values().forEach(a -> {
             if (!a.isPausado() && a.getTempoRestante() <= 0 && a.getFim() == null) {
+                System.out.println("Entrou no if do verificarAlugueis");
                 a.setFim(LocalDateTime.now());
                 a.setEstado("finalizado");
                 aluguelRepository.save(a);
@@ -125,8 +127,8 @@ public class AluguelService {
                     proximo.setEstado("iniciado");
                     proximo.setInicio(LocalDateTime.now());
                     proximo.setUltimaPausa(LocalDateTime.now());
-                    proximo.setPausado(true);
                     alugueisAtivos.put(proximo.getId(), proximo);
+                    // proximo.setPausado(true);
                     aluguelRepository.save(proximo);
                 });
             }
