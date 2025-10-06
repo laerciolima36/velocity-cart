@@ -136,6 +136,18 @@ public class AluguelService {
         });
     }
 
+    public Aluguel finalizarAluguel(Long id) {
+        Aluguel a = alugueisAtivos.get(id);
+        if (a != null) {
+            a.setFim(LocalDateTime.now());
+            a.setEstado("finalizado");
+            aluguelRepository.save(a);
+            alugueisAtivos.remove(id);
+            return a;
+        }
+        return null;
+    }
+
     public List<Aluguel> getTodosAlugueis() {
         return List.copyOf(alugueisAtivos.values());
     }

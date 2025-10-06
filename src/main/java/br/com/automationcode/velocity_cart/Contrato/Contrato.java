@@ -1,23 +1,10 @@
 package br.com.automationcode.velocity_cart.Contrato;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
-
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import jakarta.persistence.*;
+import lombok.*;
 
 @Entity
 @Getter
@@ -32,7 +19,7 @@ public class Contrato {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Número do contrato gerado automaticamente (pode ser UUID ou sequencial)
+    // Número do contrato gerado automaticamente
     @Column(name = "numero_contrato", unique = true, nullable = false)
     private String numeroContrato;
 
@@ -45,13 +32,32 @@ public class Contrato {
     @Column(nullable = false)
     private String telefoneContratante;
 
-    // Relacionamento com os itens do contrato
+    // Valor total do contrato
+    @Column(name = "valor_total", precision = 10, scale = 2)
+    private BigDecimal valorTotal;
+
+    // Itens do contrato
     @OneToMany(mappedBy = "contrato", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<ItemContrato> itens = new ArrayList<>();
 
     @PrePersist
-    public void gerarNumeroContrato() {
-        // Exemplo simples: C-20251006-0001
+    public void aoSalvar() {
         this.numeroContrato = "C-" + System.currentTimeMillis();
+        calcularValorTotal();
+    }
+
+    @PreUpdate
+    public void aoAtualizar() {
+        calcularValorTotal();
+    }
+
+    public void calcularValorTotal() {
+        if (itens != null && !itens.isEmpty()) {
+            this.valorTotal = itens.stream()
+                .map(ItemContrato::getValor)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        } else {
+            this.valorTotal = BigDecimal.ZERO;
+        }
     }
 }

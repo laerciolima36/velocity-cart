@@ -36,6 +36,11 @@ public class AluguelController {
         aluguelService.retomarAluguel(id);
     }
 
+    @PostMapping("/{id}/finalizar")
+    public void finalizar(@PathVariable Long id) {
+        aluguelService.finalizarAluguel(id);
+    }
+
     @GetMapping("/stream")
     public SseEmitter streamAlugueis() {
         SseEmitter emitter = new SseEmitter(Long.MAX_VALUE);

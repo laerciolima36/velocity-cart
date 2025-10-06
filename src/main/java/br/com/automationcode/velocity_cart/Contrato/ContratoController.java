@@ -33,4 +33,10 @@ public class ContratoController {
         contratoService.deletar(id);
         return ResponseEntity.noContent().build();
     }
+
+    @PostMapping("/{id}/iniciar")
+    public ResponseEntity<Contrato> iniciarContrato(@PathVariable Long id) {
+        Contrato contratoIniciado = contratoService.iniciarContrato(id);
+        return ResponseEntity.ok(contratoIniciado);
+    }
 }
