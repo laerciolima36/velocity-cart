@@ -1,0 +1,8 @@
+package br.com.automationcode.velocity_cart.Aluguel;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface AluguelRepository extends JpaRepository<Aluguel, Long> {
+}
