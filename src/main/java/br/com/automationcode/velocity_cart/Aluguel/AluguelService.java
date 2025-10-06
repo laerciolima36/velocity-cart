@@ -36,6 +36,7 @@ public class AluguelService {
     // @Autowired
     // TextToSpeechService textToSpeechService;
 
+    @Autowired
     public AluguelService(AluguelRepository aluguelRepository) {
         this.aluguelRepository = aluguelRepository;
 
@@ -128,7 +129,7 @@ public class AluguelService {
                     proximo.setInicio(LocalDateTime.now());
                     proximo.setUltimaPausa(LocalDateTime.now());
                     alugueisAtivos.put(proximo.getId(), proximo);
-                    // proximo.setPausado(true);
+                    proximo.setPausado(true);
                     aluguelRepository.save(proximo);
                 });
             }
