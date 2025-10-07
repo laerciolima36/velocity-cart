@@ -3,6 +3,7 @@ package br.com.automationcode.velocity_cart.Fila;
 import java.time.LocalDateTime;
 
 import br.com.automationcode.velocity_cart.Aluguel.Aluguel;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -19,7 +20,7 @@ public class Fila {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(optional = false)
+    @ManyToOne(optional = false, cascade = CascadeType.REMOVE)
     @JoinColumn(name = "aluguel_id")
     private Aluguel aluguel;
 

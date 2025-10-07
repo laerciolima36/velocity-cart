@@ -28,6 +28,17 @@ public class FilaService {
         return filaRepository.findAll();
     }
 
+    public Fila deleteById(Long id) {
+        Optional<Fila> filaOptional = filaRepository.findById(id);
+        if (filaOptional.isPresent()) {
+            Fila fila = filaOptional.get();
+            filaRepository.delete(fila);
+            return fila;
+        } else {
+            throw new IllegalArgumentException("Fila não encontrada com o ID: " + id);
+        }
+    }
+
     @Transactional
     public Fila adicionarNaFila(Aluguel aluguel) {
         Fila fila = new Fila(aluguel);
