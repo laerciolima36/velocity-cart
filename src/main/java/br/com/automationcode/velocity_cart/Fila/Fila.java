@@ -25,6 +25,8 @@ public class Fila {
 
     private LocalDateTime dataEntrada = LocalDateTime.now();
 
+    private long tempoParaIniciar; // em minutos
+
     public Fila() {
     }
 
@@ -52,5 +54,13 @@ public class Fila {
 
     public void setDataEntrada(LocalDateTime dataEntrada) {
         this.dataEntrada = dataEntrada;
+    }
+
+    public long getTempoParaIniciar() {
+        return tempoParaIniciar;
+    }
+
+    public void setTempoParaIniciar(long tempoParaIniciar) {
+        this.tempoParaIniciar = tempoParaIniciar;
     }
 }
