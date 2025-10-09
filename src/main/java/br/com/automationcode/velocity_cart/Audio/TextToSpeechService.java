@@ -1,85 +1,73 @@
-// package br.com.automationcode.velocity_cart.Audio;
+package br.com.automationcode.velocity_cart.Audio;
 
-// import java.io.IOException;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.OutputStream;
 
-// import javax.sound.sampled.AudioFormat;
-// import javax.sound.sampled.AudioInputStream;
-// import javax.sound.sampled.AudioSystem;
-// import javax.sound.sampled.DataLine;
-// import javax.sound.sampled.LineUnavailableException;
-// import javax.sound.sampled.SourceDataLine;
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.Clip;
 
-// import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Service;
 
-// import marytts.MaryInterface;
-// import marytts.exceptions.SynthesisException;
+import com.google.cloud.texttospeech.v1.AudioConfig;
+import com.google.cloud.texttospeech.v1.AudioEncoding;
+import com.google.cloud.texttospeech.v1.SsmlVoiceGender;
+import com.google.cloud.texttospeech.v1.SynthesisInput;
+import com.google.cloud.texttospeech.v1.SynthesizeSpeechResponse;
+import com.google.cloud.texttospeech.v1.TextToSpeechClient;
+import com.google.cloud.texttospeech.v1.VoiceSelectionParams;
+import com.google.protobuf.ByteString;
 
-// @Service
-// public class TextToSpeechService {
+@Service
+public class TextToSpeechService {
 
-//     private final MaryInterface maryInterface;
+    public void speak(String text) throws Exception {
+        try (TextToSpeechClient textToSpeechClient = TextToSpeechClient.create()) {
 
-//     // O Spring injeta o MaryInterface configurado no MaryTTSConfig
-//     public TextToSpeechService(MaryInterface maryInterface) {
-//         this.maryInterface = maryInterface;
-//     }
+            // Texto a converter
+            SynthesisInput input = SynthesisInput.newBuilder()
+                    .setText(text)
+                    .build();
 
-//     /**
-//      * Sintetiza o texto para fala e retorna um array de bytes no formato WAV.
-//      * * @param text O texto a ser convertido para fala.
-//      * @return Array de bytes representando o arquivo de áudio WAV.
-//      * @throws IOException Se houver erro de I/O durante a conversão do áudio.
-//      * @throws SynthesisException Se o motor MaryTTS falhar ao sintetizar.
-//      */
-//     public void synthesizeAndPlay(String text) 
-//            throws SynthesisException, IOException, LineUnavailableException {
-           
-//         System.out.println("Service: Iniciando síntese e reprodução interna para o texto: " + text);
-        
-//         // 1. Geração do AudioInputStream pelo MaryTTS
-//         AudioInputStream audio = maryInterface.generateAudio(text);
+            // Configuração da voz
+            VoiceSelectionParams voice = VoiceSelectionParams.newBuilder()
+                    .setLanguageCode("pt-BR")
+                    // .setSsmlGender(SsmlVoiceGender.NEUTRAL)
+                    .setName("pt-BR-Standard-C") // você pode trocar por outras vozes
+                    .build();
 
-//         // 2. Criação dos objetos de reprodução
-//         AudioFormat format = audio.getFormat();
-//         DataLine.Info info = new DataLine.Info(SourceDataLine.class, format);
+            // Configuração do áudio
+            AudioConfig audioConfig = AudioConfig.newBuilder()
+                    .setAudioEncoding(AudioEncoding.LINEAR16) // WAV (para reprodução direta)
+                    .build();
 
-//         // Verifica se a linha de áudio é suportada
-//         if (!AudioSystem.isLineSupported(info)) {
-//             System.err.println("A linha de áudio não é suportada no seu sistema.");
-//             audio.close();
-//             throw new LineUnavailableException("Linha de áudio não suportada.");
-//         }
+            // Requisição
+            SynthesizeSpeechResponse response = textToSpeechClient.synthesizeSpeech(input, voice, audioConfig);
 
-//         // 3. Abrindo a linha de áudio e preparando o buffer
-//         SourceDataLine line = null;
-//         try {
-//             line = (SourceDataLine) AudioSystem.getLine(info);
-//             line.open(format);
-//             line.start();
+            // Pegar bytes de áudio
+            ByteString audioContents = response.getAudioContent();
 
-//             int bufferSize = (int) format.getSampleRate() * format.getFrameSize();
-//             byte[] buffer = new byte[bufferSize];
-//             int bytesRead;
+            // Salvar temporariamente
+            File tempFile = File.createTempFile("tts-", ".wav");
+            try (OutputStream out = new FileOutputStream(tempFile)) {
+                out.write(audioContents.toByteArray());
+            }
 
-//             // 4. Lendo do AudioInputStream e escrevendo para a linha de áudio
-//             while ((bytesRead = audio.read(buffer, 0, buffer.length)) != -1) {
-//                 if (bytesRead > 0) {
-//                     line.write(buffer, 0, bytesRead);
-//                 }
-//             }
+            // Reproduzir no servidor
+            playAudio(tempFile);
 
-//             // 5. Finalizando a reprodução e liberando recursos
-//             line.drain(); // Espera a linha terminar de reproduzir tudo
-//             System.out.println("Service: Reprodução interna concluída.");
+            tempFile.deleteOnExit();
+        }
+    }
 
-//         } finally {
-//             if (line != null) {
-//                 line.stop();
-//                 line.close();
-//             }
-//             if (audio != null) {
-//                 audio.close();
-//             }
-//         }
-//     }
-// }
+    private void playAudio(File file) throws Exception {
+        try (AudioInputStream audioIn = AudioSystem.getAudioInputStream(file)) {
+            Clip clip = AudioSystem.getClip();
+            clip.open(audioIn);
+            clip.start();
+            Thread.sleep(clip.getMicrosecondLength() / 1000);
+            clip.close();
+        }
+    }
+}

@@ -31,34 +31,6 @@ public class SecurityConfig {
         this.userDetailsService = userDetailsService;
     }
 
-    // @Bean
-    // public SecurityFilterChain securityFilterChain(HttpSecurity http) throws
-    // Exception {
-    // http.csrf(csrf -> csrf.disable()) // Desativa CSRF
-    // .sessionManagement(session ->
-    // session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-    // .authorizeHttpRequests(auth -> auth
-    // .requestMatchers(
-    // "/auth/login", //endpoint de login
-    // "/api/maquinas/produtos", //endpoint para listar os produtos na máquina para
-    // o app
-    // "/api/stone/**",
-    // "/swagger-ui/**",
-    // "/v3/api-docs/**",
-    // "/swagger-ui.html",
-    // "/actuator/**",
-    // "/api/vender",
-    // "/api/venda/**",
-    // "/", "/index.html", "/static/**", "/js/**", "/css/**", "/assets/**"
-    // ).permitAll() // Permite login sem autenticação
-    // .anyRequest().authenticated()
-    // )
-    // .authenticationProvider(authenticationProvider())
-    // .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
-
-    // return http.build();
-    // }
-
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -69,6 +41,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/swagger-ui/**").permitAll()
                         .requestMatchers("/api/aluguel/**").permitAll()
+                        .requestMatchers("/api/tts/speak/**").permitAll()
                         .requestMatchers("/api/vendas").permitAll()
                         .requestMatchers("/imagens/produtos/**").permitAll()
                         .requestMatchers("/api/stone/**").permitAll() //verificar possibilidade de token

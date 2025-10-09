@@ -12,6 +12,7 @@ import java.util.concurrent.TimeUnit;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import br.com.automationcode.velocity_cart.Fila.Fila;
 import br.com.automationcode.velocity_cart.Fila.FilaService;
 import br.com.automationcode.velocity_cart.Produto.Produto;
 import br.com.automationcode.velocity_cart.Produto.ProdutoService;
@@ -167,6 +168,23 @@ public class AluguelService {
             //textToSpeechService.synthesizeAndPlay(mensagem);
         } catch (Exception e) {
             System.err.println("Erro ao reproduzir mensagem: " + e.getMessage());
+        }
+    }
+
+    // chamar apenas quando for listar a fila
+    private void tempoParaIniciarFila() {
+        List<Aluguel> alugueisAtivos = getTodosAlugueis();
+
+        List<Fila> todosFilas = filaService.getTodosFilas();
+
+        for (Fila fila : todosFilas) {
+            for (Aluguel aluguel : alugueisAtivos) {
+                if (fila.getAluguel().getProduto().getId().equals(aluguel.getProduto().getId())) {
+                    long tempoRestante = aluguel.getTempoRestante();
+                    fila.setTempoParaIniciar(tempoRestante);
+                    filaService.save(fila);
+                }
+            }
         }
     }
 }

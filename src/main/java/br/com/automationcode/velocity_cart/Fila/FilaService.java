@@ -3,18 +3,13 @@ package br.com.automationcode.velocity_cart.Fila;
 import java.util.List;
 import java.util.Optional;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import br.com.automationcode.velocity_cart.Aluguel.Aluguel;
-import br.com.automationcode.velocity_cart.Aluguel.AluguelService;
 
 @Service
 public class FilaService {
-
-    @Autowired
-    AluguelService aluguelService;
 
     private final FilaRepository filaRepository;
 
@@ -24,7 +19,7 @@ public class FilaService {
 
     @Transactional
     public List<Fila> getTodosFilas() {
-        tempoParaIniciarFila();
+        // tempoParaIniciarFila();
         return filaRepository.findAll();
     }
 
@@ -64,20 +59,8 @@ public class FilaService {
         return filaRepository.countByAluguel_Produto_Id(produtoId);
     }
 
-    // chamar apenas quando for listar a fila
-    private void tempoParaIniciarFila() {
-        List<Aluguel> alugueisAtivos = aluguelService.getTodosAlugueis();
-
-        List<Fila> todosFilas = filaRepository.findAll();
-
-        for (Fila fila : todosFilas) {
-            for (Aluguel aluguel : alugueisAtivos) {
-                if (fila.getAluguel().getProduto().getId().equals(aluguel.getProduto().getId())) {
-                    long tempoRestante = aluguel.getTempoRestante();
-                    fila.setTempoParaIniciar(tempoRestante);
-                    filaRepository.save(fila);
-                }
-            }
-        }
+    public void save(Fila fila) {
+        filaRepository.save(fila);
     }
+
 }
