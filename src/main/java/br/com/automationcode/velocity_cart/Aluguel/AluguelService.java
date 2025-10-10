@@ -66,6 +66,8 @@ public class AluguelService {
     }
 
     public void verificarAlugueis() {
+        System.out.println("Verificando alugueis ativos: " + alugueisAtivos.size());
+
         List<Aluguel> snapshot = new ArrayList<>(alugueisAtivos.values());
 
         for (Aluguel a : snapshot) {
@@ -216,7 +218,7 @@ public class AluguelService {
                         break;
                     case 1:
                         textToSpeechService.speak(a.getNomeResponsavel() + ", O aluguel do brinquedo "
-                                + a.getProduto().getNome() + " irá terminar em 60 segundos.");
+                                + a.getProduto().getNome() + " irá terminar em menos 60 segundos.");
                         break;
                     case 2:
                         textToSpeechService.speak(a.getNomeResponsavel() + ", o brinquedo "

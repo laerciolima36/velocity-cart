@@ -33,7 +33,7 @@ public class TextToSpeechService {
             VoiceSelectionParams voice = VoiceSelectionParams.newBuilder()
                     .setLanguageCode("pt-BR")
                     // .setSsmlGender(SsmlVoiceGender.NEUTRAL)
-                    .setName("pt-BR-Standard-C") // você pode trocar por outras vozes
+                    .setName("pt-BR-Standard-D") // você pode trocar por outras vozes
                     .build();
 
             // Configuração do áudio
