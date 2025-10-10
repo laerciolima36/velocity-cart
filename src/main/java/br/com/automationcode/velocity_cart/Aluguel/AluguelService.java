@@ -219,14 +219,27 @@ public class AluguelService {
 
     public void retomarAluguel(Long aluguelId) {
         log.info("Retomando aluguel {}", aluguelId);
-        Aluguel a = alugueisAtivos.get(aluguelId);
-        if (a != null && a.isPausado()) {
+
+        // Busca a versão mais recente do banco
+        Aluguel a = aluguelRepository.findById(aluguelId).orElse(null);
+        if (a == null) {
+            log.warn("Aluguel {} não encontrado no banco de dados para retomada", aluguelId);
+            return;
+        }
+
+        if (a.isPausado()) {
             a.setPausado(false);
-            a.setUltimaPausa(LocalDateTime.now()
-                    .minusSeconds(a.getTempoEscolhido() * 60 - a.getTempoRestanteAntesPausa()));
+
+            a.setUltimaPausa(LocalDateTime.now().minusSeconds(a.getTempoEscolhido() * 60 - a.getTempoRestanteAntesPausa()));
+
             a.setEstado("iniciado");
-            salvarAluguelSeguramente(a);
+
+            Aluguel salvo = salvarAluguelSeguramente(a);
+            alugueisAtivos.put(salvo.getId(), salvo);
+
             log.debug("Aluguel {} retomado com sucesso", aluguelId);
+        } else {
+            log.debug("Aluguel {} não estava pausado, nenhuma ação necessária", aluguelId);
         }
     }
 
