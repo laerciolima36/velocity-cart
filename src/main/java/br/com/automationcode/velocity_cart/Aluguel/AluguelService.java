@@ -95,16 +95,28 @@ public class AluguelService {
     private void finalizarAluguelInterno(Aluguel a) {
         log.info("Finalizando aluguel interno ID {}", a.getId());
         try {
-            a.setFim(LocalDateTime.now());
-            a.setEstado("finalizado");
-            salvarAluguelSeguramente(a);
-            alugueisAtivos.remove(a.getId());
-            log.debug("Aluguel {} removido de alugueisAtivos", a.getId());
+            // Busca a versão mais recente do banco
+            Aluguel atual = aluguelRepository.findById(a.getId()).orElse(null);
+            if (atual == null) {
+                log.warn("Aluguel {} não encontrado no banco para finalização", a.getId());
+                alugueisAtivos.remove(a.getId());
+                return;
+            }
 
-            reproduzirMensagem(a, 0);
+            // Atualiza o estado e salva
+            atual.setFim(LocalDateTime.now());
+            atual.setEstado("finalizado");
+            Aluguel salvo = salvarAluguelSeguramente(atual);
 
-            filaService.liberarProximoDaFila(a.getProduto().getId()).ifPresent(proximo -> {
-                log.info("Próximo da fila encontrado para produto {}: {}", a.getProduto().getId(), proximo.getId());
+            // Remove dos alugueis ativos
+            alugueisAtivos.remove(salvo.getId());
+            log.debug("Aluguel {} removido de alugueisAtivos", salvo.getId());
+
+            // Executa ações pós-finalização
+            reproduzirMensagem(salvo, 0);
+
+            filaService.liberarProximoDaFila(salvo.getProduto().getId()).ifPresent(proximo -> {
+                log.info("Próximo da fila encontrado para produto {}: {}", salvo.getProduto().getId(), proximo.getId());
                 iniciarAluguelFila(proximo);
             });
 
