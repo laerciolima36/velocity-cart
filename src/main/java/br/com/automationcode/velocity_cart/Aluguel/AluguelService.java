@@ -230,7 +230,8 @@ public class AluguelService {
         if (a.isPausado()) {
             a.setPausado(false);
 
-            a.setUltimaPausa(LocalDateTime.now().minusSeconds(a.getTempoEscolhido() * 60 - a.getTempoRestanteAntesPausa()));
+            a.setUltimaPausa(
+                    LocalDateTime.now().minusSeconds(a.getTempoEscolhido() * 60 - a.getTempoRestanteAntesPausa()));
 
             a.setEstado("iniciado");
 
@@ -245,17 +246,24 @@ public class AluguelService {
 
     public Aluguel finalizarAluguel(Long id) {
         log.info("Finalizando aluguel manualmente {}", id);
-        Aluguel a = alugueisAtivos.get(id);
-        if (a != null) {
-            a.setFim(LocalDateTime.now());
-            a.setEstado("finalizado");
-            salvarAluguelSeguramente(a);
-            alugueisAtivos.remove(id);
-            log.debug("Aluguel {} removido dos ativos", id);
-            return a;
+
+        // Busca a versão mais recente do banco
+        Aluguel a = aluguelRepository.findById(id).orElse(null);
+        if (a == null) {
+            log.warn("Tentativa de finalizar aluguel inexistente: {}", id);
+            return null;
         }
-        log.warn("Tentativa de finalizar aluguel inexistente: {}", id);
-        return null;
+
+        a.setFim(LocalDateTime.now());
+        a.setEstado("finalizado");
+
+        Aluguel salvo = salvarAluguelSeguramente(a);
+
+        // Remove dos alugueis ativos
+        alugueisAtivos.remove(salvo.getId());
+
+        log.debug("Aluguel {} finalizado e removido dos ativos com sucesso", id);
+        return salvo;
     }
 
     public List<Aluguel> getTodosAlugueis() {
