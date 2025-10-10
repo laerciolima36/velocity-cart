@@ -16,7 +16,6 @@ import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 
 import br.com.automationcode.velocity_cart.Audio.TextToSpeechService;
-import br.com.automationcode.velocity_cart.Fila.Fila;
 import br.com.automationcode.velocity_cart.Fila.FilaService;
 import br.com.automationcode.velocity_cart.Produto.Produto;
 import br.com.automationcode.velocity_cart.Produto.ProdutoService;
@@ -28,37 +27,35 @@ import jakarta.transaction.Transactional;
 public class AluguelService {
 
     private final AluguelRepository aluguelRepository;
-    private final Map<Long, Aluguel> alugueisAtivos = new ConcurrentHashMap<>(); // Map para aluguéis ativos
-    private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(); // para verificar
-                                                                                                     // aluguéis ativos
-    private final ExecutorService executor = Executors.newSingleThreadExecutor(); // para mensagens de voz
+    private final Map<Long, Aluguel> alugueisAtivos = new ConcurrentHashMap<>();
+    private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+    private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
     @Autowired
-    VendaService vendaService;
+    private VendaService vendaService;
 
     @Autowired
-    FilaService filaService;
+    private FilaService filaService;
 
     @Autowired
-    ProdutoService produtoService;
+    private ProdutoService produtoService;
 
     @Autowired
-    TextToSpeechService textToSpeechService;
+    private TextToSpeechService textToSpeechService;
 
     @Autowired
     public AluguelService(AluguelRepository aluguelRepository) {
         this.aluguelRepository = aluguelRepository;
-
-        // Reinicia timers para aluguéis ainda ativos
-        aluguelRepository.findAll().forEach(a -> {
-            if (a.getFim() == null && a.getEstado().equals("iniciado")) {
-                alugueisAtivos.put(a.getId(), a);
-            }
-        });
     }
 
     @PostConstruct
     public void iniciarVerificacao() {
+        // Inicializa alugueis ativos do banco
+        aluguelRepository.findAll().stream()
+                .filter(a -> a.getFim() == null && "iniciado".equals(a.getEstado()))
+                .forEach(a -> alugueisAtivos.put(a.getId(), a));
+
+        // Agendar verificação periódica
         scheduler.scheduleWithFixedDelay(() -> {
             try {
                 verificarAlugueis();
@@ -69,95 +66,85 @@ public class AluguelService {
     }
 
     public void verificarAlugueis() {
-        System.out.println("Verificando aluguéis ativos...");
+        List<Aluguel> snapshot = new ArrayList<>(alugueisAtivos.values());
 
-        // Criar uma cópia para iterar, evitando problemas ao remover enquanto itera
-        List<Aluguel> alugueisSnapshot = new ArrayList<>(alugueisAtivos.values());
-
-        for (Aluguel a : alugueisSnapshot) {
-            // Verificação de tempo com tolerância
+        for (Aluguel a : snapshot) {
+            // Finalizar alugueis expirados
             if (!a.isPausado() && a.getTempoRestante() <= 0 && a.getFim() == null) {
-                try {
-                    // Atualiza estado de forma segura
-                    a.setFim(LocalDateTime.now());
-                    a.setEstado("finalizado");
-
-                    // Salva dentro de uma transação separada
-                    salvarAluguelSeguramente(a);
-
-                    // Remove do mapa após salvar
-                    alugueisAtivos.remove(a.getId());
-
-                    // Reproduz mensagem de finalização de forma sequencial
-                    reproduzirMensagem(a, 0);
-
-                    // Libera próximo da fila
-                    filaService.liberarProximoDaFila(a.getProduto().getId()).ifPresent(proximo -> {
-                        proximo.setEstado("iniciado");
-                        proximo.setInicio(LocalDateTime.now());
-                        proximo.setUltimaPausa(LocalDateTime.now());
-                        proximo.setPausado(true);
-
-                        // Salva o próximo aluguel de forma segura
-                        salvarAluguelSeguramente(proximo);
-
-                        // Adiciona ao mapa depois de salvar
-                        alugueisAtivos.put(proximo.getId(), proximo);
-
-                        // Reproduz mensagem para o próximo aluguel
-                        reproduzirMensagem(proximo, 2);
-                    });
-
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
+                finalizarAluguelInterno(a);
             }
 
-            // Mensagem de alerta para 60 segundos restantes (usa range tolerante)
+            // Mensagem de alerta para 60 segundos restantes
             if (!a.isPausado() && a.getTempoRestante() <= 60 && a.getTempoRestante() > 59) {
                 reproduzirMensagem(a, 1);
             }
         }
     }
 
-    // Método auxiliar para salvar alugueis de forma segura em JPA
-    @Transactional
-    public void salvarAluguelSeguramente(Aluguel aluguel) {
+    private void finalizarAluguelInterno(Aluguel a) {
         try {
-            aluguelRepository.save(aluguel);
+            a.setFim(LocalDateTime.now());
+            a.setEstado("finalizado");
+            salvarAluguelSeguramente(a);
+            alugueisAtivos.remove(a.getId());
+
+            reproduzirMensagem(a, 0);
+
+            filaService.liberarProximoDaFila(a.getProduto().getId()).ifPresent(proximo -> {
+                iniciarAluguelFila(proximo);
+            });
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void iniciarAluguelFila(Aluguel proximo) {
+        proximo.setEstado("iniciado");
+        proximo.setInicio(LocalDateTime.now());
+        proximo.setUltimaPausa(LocalDateTime.now());
+        proximo.setPausado(true);
+
+        salvarAluguelSeguramente(proximo);
+        alugueisAtivos.put(proximo.getId(), proximo);
+        reproduzirMensagem(proximo, 2);
+    }
+
+    @Transactional
+    public Aluguel salvarAluguelSeguramente(Aluguel aluguel) {
+        try {
+            return aluguelRepository.save(aluguel);
         } catch (ObjectOptimisticLockingFailureException e) {
             System.out.println("Aluguel já atualizado por outra transação: " + aluguel.getId());
-            // Aqui você pode recarregar e tentar novamente, se necessário
+            // Recarrega do banco para sincronizar estado
+            return aluguelRepository.findById(aluguel.getId()).orElse(aluguel);
         }
     }
 
     public Aluguel criarAluguel(Aluguel aluguel) {
-        if (aluguel.getProduto() == null) {
+        if (aluguel.getProduto() == null)
             throw new IllegalArgumentException("Produto não pode ser nulo");
-        }
 
         Produto produto = produtoService.buscarPorId(aluguel.getProduto().getId());
 
-        if (brinquedoDisponivel(aluguel.getProduto().getId())) {
-            return iniciarAluguel(aluguel, produto);
-        } else {
-            return adicionarNaFila(aluguel, produto);
-        }
+        return brinquedoDisponivel(produto.getId())
+                ? iniciarAluguel(aluguel, produto)
+                : adicionarNaFila(aluguel, produto);
     }
 
     private Aluguel iniciarAluguel(Aluguel aluguel, Produto produto) {
-        aluguel.setInicio(LocalDateTime.now()); // para referencia no banco de dados, para saber que horas comecou
-        aluguel.setUltimaPausa(LocalDateTime.now()); // usado como referencia para calcular o tempo restante
+        aluguel.setInicio(LocalDateTime.now());
+        aluguel.setUltimaPausa(LocalDateTime.now());
         aluguel.setFim(null);
         aluguel.setProduto(produto);
         aluguel.setPausado(false);
         aluguel.setEstado("iniciado");
         aluguel.setTempoRestanteAntesPausa(aluguel.getTempoEscolhido() * 60);
 
-        Aluguel aluguelSalvo = aluguelRepository.save(aluguel);
-        alugueisAtivos.put(aluguelSalvo.getId(), aluguelSalvo);
-        vendaService.registrarVenda(aluguelSalvo);
-        return aluguelSalvo;
+        Aluguel salvo = salvarAluguelSeguramente(aluguel);
+        alugueisAtivos.put(salvo.getId(), salvo);
+        vendaService.registrarVenda(salvo);
+        return salvo;
     }
 
     private Aluguel adicionarNaFila(Aluguel aluguel, Produto produto) {
@@ -167,12 +154,9 @@ public class AluguelService {
         aluguel.setProduto(produto);
         aluguel.setTempoRestanteAntesPausa(aluguel.getTempoEscolhido() * 60);
 
-        Aluguel aluguelSalvo = aluguelRepository.save(aluguel);
-
-        vendaService.registrarVenda(aluguelSalvo);
-
-        filaService.adicionarNaFila(aluguelSalvo);
-
+        Aluguel salvo = salvarAluguelSeguramente(aluguel);
+        vendaService.registrarVenda(salvo);
+        filaService.adicionarNaFila(salvo);
         return aluguel;
     }
 
@@ -183,7 +167,7 @@ public class AluguelService {
             a.setUltimaPausa(LocalDateTime.now());
             a.setPausado(true);
             a.setEstado("pausado");
-            aluguelRepository.save(a);
+            salvarAluguelSeguramente(a);
         }
     }
 
@@ -191,13 +175,10 @@ public class AluguelService {
         Aluguel a = alugueisAtivos.get(aluguelId);
         if (a != null && a.isPausado()) {
             a.setPausado(false);
-            a.setUltimaPausa(
-                    LocalDateTime.now().minusSeconds(a.getTempoEscolhido() * 60 - a.getTempoRestanteAntesPausa()));
+            a.setUltimaPausa(LocalDateTime.now()
+                    .minusSeconds(a.getTempoEscolhido() * 60 - a.getTempoRestanteAntesPausa()));
             a.setEstado("iniciado");
-            // Ajusta o início considerando o tempo restante
-            // a.setInicio(LocalDateTime.now().minusSeconds(a.getTempoEscolhido() * 60 -
-            // a.getTempoRestanteAntesPausa()));
-            aluguelRepository.save(a);
+            salvarAluguelSeguramente(a);
         }
     }
 
@@ -206,7 +187,7 @@ public class AluguelService {
         if (a != null) {
             a.setFim(LocalDateTime.now());
             a.setEstado("finalizado");
-            aluguelRepository.save(a);
+            salvarAluguelSeguramente(a);
             alugueisAtivos.remove(id);
             return a;
         }
@@ -217,46 +198,30 @@ public class AluguelService {
         return List.copyOf(alugueisAtivos.values());
     }
 
-    public boolean brinquedoDisponivel(Long produtoId) { // verificar se o brinquedo esta disponivel
-        for (Aluguel a : alugueisAtivos.values()) {
-            if (Objects.equals(produtoId, a.getProduto().getId())
-                    && a.getFim() == null) {
-                return false; // brinquedo nao disponivel
-            }
-        }
-        return true; // brinquedo disponivel
+    public boolean brinquedoDisponivel(Long produtoId) {
+        return alugueisAtivos.values().stream()
+                .noneMatch(a -> produtoId.equals(a.getProduto().getId()) && a.getFim() == null);
     }
 
     public void reproduzirMensagem(Aluguel a, int codigo) {
-
         executor.submit(() -> {
             try {
                 switch (codigo) {
                     case 0:
-                        textToSpeechService
-                                .speak(a.getNomeResponsavel() + ", o aluguel do brinquedo "
-                                        + a.getProduto().getNome()
-                                        + " terminou.");
-                        textToSpeechService
-                                .speak(a.getNomeResponsavel() + ", o aluguel do brinquedo "
-                                        + a.getProduto().getNome()
-                                        + " terminou.");
-                        textToSpeechService
-                                .speak(a.getNomeResponsavel() + ", o aluguel do brinquedo "
-                                        + a.getProduto().getNome()
-                                        + " terminou.");
+                        for (int i = 0; i < 3; i++)
+                            textToSpeechService
+                                    .speak(a.getNomeResponsavel() + ", o aluguel do brinquedo "
+                                            + a.getProduto().getNome()
+                                            + " terminou.");
                         break;
-
                     case 1:
-                        textToSpeechService
-                                .speak(a.getNomeResponsavel() + ", O aluguel do brinquedo " + a.getProduto().getNome()
-                                        + " irá terminar em 60 segundos.");
+                        textToSpeechService.speak(a.getNomeResponsavel() + ", O aluguel do brinquedo "
+                                + a.getProduto().getNome() + " irá terminar em 60 segundos.");
                         break;
-
                     case 2:
-                        textToSpeechService
-                                .speak(a.getNomeResponsavel() + ", o brinquedo " + a.getProduto().getNome()
-                                        + " já está disponível para você brincar. Por favor, dirija-se ao balcão.");
+                        textToSpeechService.speak(a.getNomeResponsavel() + ", o brinquedo "
+                                + a.getProduto().getNome()
+                                + " já está disponível para você brincar. Por favor, dirija-se ao balcão.");
                         break;
                     default:
                         break;
@@ -267,20 +232,17 @@ public class AluguelService {
         });
     }
 
-    // chamar apenas quando for listar a fila
-    private void tempoParaIniciarFila() {
-        List<Aluguel> alugueisAtivos = getTodosAlugueis();
-
-        List<Fila> todosFilas = filaService.getTodosFilas();
-
-        for (Fila fila : todosFilas) {
-            for (Aluguel aluguel : alugueisAtivos) {
-                if (fila.getAluguel().getProduto().getId().equals(aluguel.getProduto().getId())) {
-                    long tempoRestante = aluguel.getTempoRestante();
-                    fila.setTempoParaIniciar(tempoRestante);
-                    filaService.save(fila);
-                }
-            }
-        }
+    // Atualiza tempo restante para cada fila
+    public void atualizarTempoParaFila() {
+        List<Aluguel> ativos = getTodosAlugueis();
+        filaService.getTodosFilas().forEach(fila -> {
+            ativos.stream()
+                    .filter(a -> Objects.equals(a.getProduto().getId(), fila.getAluguel().getProduto().getId()))
+                    .findFirst()
+                    .ifPresent(a -> {
+                        fila.setTempoParaIniciar(a.getTempoRestante());
+                        filaService.save(fila);
+                    });
+        });
     }
 }
