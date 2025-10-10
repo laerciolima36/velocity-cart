@@ -62,7 +62,7 @@ public class AluguelService {
             } catch (Exception e) {
                 e.printStackTrace();
             }
-        }, 0, 1, TimeUnit.SECONDS);
+        }, 1, 1, TimeUnit.SECONDS);
     }
 
     public void verificarAlugueis() {
@@ -223,7 +223,7 @@ public class AluguelService {
                     case 2:
                         textToSpeechService.speak(a.getNomeResponsavel() + ", o brinquedo "
                                 + a.getProduto().getNome()
-                                + " já está disponível para você brincar. Por favor, dirija-se ao balcão.");
+                                + " já está disponível para " + a.getNomeCrianca() + " brincar. Por favor, dirija-se ao balcão.");
                         break;
                     default:
                         break;
