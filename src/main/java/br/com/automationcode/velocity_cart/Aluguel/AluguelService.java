@@ -35,10 +35,14 @@ public class AluguelService {
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
-    @Autowired private VendaService vendaService;
-    @Autowired private FilaService filaService;
-    @Autowired private ProdutoService produtoService;
-    @Autowired private TextToSpeechService textToSpeechService;
+    @Autowired
+    private VendaService vendaService;
+    @Autowired
+    private FilaService filaService;
+    @Autowired
+    private ProdutoService produtoService;
+    @Autowired
+    private TextToSpeechService textToSpeechService;
 
     @Autowired
     public AluguelService(AluguelRepository aluguelRepository) {
@@ -185,14 +189,31 @@ public class AluguelService {
 
     public void pausarAluguel(Long aluguelId) {
         log.info("Pausando aluguel {}", aluguelId);
-        Aluguel a = alugueisAtivos.get(aluguelId);
-        if (a != null && !a.isPausado()) {
+
+        // Sempre recarrega a instância atualizada do banco
+        Aluguel a = aluguelRepository.findById(aluguelId).orElse(null);
+
+        if (a == null) {
+            log.warn("Aluguel {} não encontrado no banco para pausar.", aluguelId);
+            return;
+        }
+
+        if (!a.isPausado()) {
+            log.debug("Atualizando informações do aluguel {} para pausa.", aluguelId);
+
             a.setTempoRestanteAntesPausa(a.getTempoRestante());
             a.setUltimaPausa(LocalDateTime.now());
             a.setPausado(true);
             a.setEstado("pausado");
-            salvarAluguelSeguramente(a);
-            log.debug("Aluguel {} pausado com sucesso", aluguelId);
+
+            Aluguel salvo = salvarAluguelSeguramente(a);
+
+            // Atualiza o cache com a nova instância do banco
+            alugueisAtivos.put(salvo.getId(), salvo);
+
+            log.info("Aluguel {} pausado com sucesso e cache atualizado.", aluguelId);
+        } else {
+            log.debug("Aluguel {} já está pausado, nenhuma ação necessária.", aluguelId);
         }
     }
 
