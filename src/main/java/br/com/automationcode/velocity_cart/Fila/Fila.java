@@ -20,7 +20,7 @@ public class Fila {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(optional = false, cascade = CascadeType.REMOVE)
+    @ManyToOne(optional = false)
     @JoinColumn(name = "aluguel_id")
     private Aluguel aluguel;
 

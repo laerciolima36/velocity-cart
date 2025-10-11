@@ -14,6 +14,7 @@ import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 
@@ -34,6 +35,9 @@ public class AluguelService {
     private final Map<Long, Aluguel> alugueisAtivos = new ConcurrentHashMap<>();
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
+
+    @Autowired
+    private ApplicationContext context;
 
     @Autowired
     private VendaService vendaService;
@@ -79,7 +83,8 @@ public class AluguelService {
             try {
                 if (!a.isPausado() && a.getTempoRestante() <= 0 && a.getFim() == null) {
                     log.debug("Aluguel expirado detectado: {} - {}", a.getId(), a.getProduto().getNome());
-                    finalizarAluguelInterno(a);
+                    AluguelService self = context.getBean(AluguelService.class);
+                    self.finalizarAluguelInterno(a);
                 }
 
                 if (!a.isPausado() && a.getTempoRestante() <= 60 && a.getTempoRestante() > 59) {
@@ -92,11 +97,12 @@ public class AluguelService {
         }
     }
 
-    private void finalizarAluguelInterno(Aluguel a) {
+    @Transactional
+    public void finalizarAluguelInterno(Aluguel a) {
         log.info("Finalizando aluguel interno ID {}", a.getId());
         try {
             // Busca a versão mais recente do banco
-            Aluguel atual = aluguelRepository.findById(a.getId()).orElse(null);
+            Aluguel atual = aluguelRepository.findByIdForUpdate(a.getId());
             if (atual == null) {
                 log.warn("Aluguel {} não encontrado no banco para finalização", a.getId());
                 alugueisAtivos.remove(a.getId());
@@ -117,7 +123,8 @@ public class AluguelService {
 
             filaService.liberarProximoDaFila(salvo.getProduto().getId()).ifPresent(proximo -> {
                 log.info("Próximo da fila encontrado para produto {}: {}", salvo.getProduto().getId(), proximo.getId());
-                iniciarAluguelFila(proximo);
+                AluguelService self = context.getBean(AluguelService.class);
+                self.iniciarAluguelFila(proximo);
             });
 
         } catch (Exception e) {
@@ -125,17 +132,18 @@ public class AluguelService {
         }
     }
 
-    private void iniciarAluguelFila(Aluguel proximo) {
+    @Transactional
+    public void iniciarAluguelFila(Aluguel proximo) {
         log.info("Iniciando aluguel a partir da fila: {}", proximo.getId());
         proximo.setEstado("iniciado");
         proximo.setInicio(LocalDateTime.now());
         proximo.setUltimaPausa(LocalDateTime.now());
         proximo.setPausado(true);
 
-        salvarAluguelSeguramente(proximo);
-        alugueisAtivos.put(proximo.getId(), proximo);
+        Aluguel salvo = salvarAluguelSeguramente(proximo);
+        alugueisAtivos.put(salvo.getId(), salvo);
         log.debug("Aluguel {} adicionado à lista de ativos", proximo.getId());
-        reproduzirMensagem(proximo, 2);
+        reproduzirMensagem(salvo, 2);
     }
 
     @Transactional
@@ -151,6 +159,7 @@ public class AluguelService {
         }
     }
 
+    @Transactional
     public Aluguel criarAluguel(Aluguel aluguel) {
         log.info("Criando aluguel para produto {}", aluguel.getProduto() != null ? aluguel.getProduto().getId() : null);
 
@@ -168,6 +177,7 @@ public class AluguelService {
         }
     }
 
+    @Transactional
     private Aluguel iniciarAluguel(Aluguel aluguel, Produto produto) {
         log.info("Iniciando aluguel para produto {}", produto.getId());
         aluguel.setInicio(LocalDateTime.now());
@@ -185,6 +195,7 @@ public class AluguelService {
         return salvo;
     }
 
+    @Transactional
     private Aluguel adicionarNaFila(Aluguel aluguel, Produto produto) {
         log.info("Adicionando aluguel à fila para produto {}", produto.getId());
         aluguel.setEstado("fila");
@@ -199,11 +210,12 @@ public class AluguelService {
         return salvo;
     }
 
+    @Transactional
     public void pausarAluguel(Long aluguelId) {
         log.info("Pausando aluguel {}", aluguelId);
 
         // Sempre recarrega a instância atualizada do banco
-        Aluguel a = aluguelRepository.findById(aluguelId).orElse(null);
+        Aluguel a = aluguelRepository.findByIdForUpdate(aluguelId);
 
         if (a == null) {
             log.warn("Aluguel {} não encontrado no banco para pausar.", aluguelId);
@@ -229,11 +241,12 @@ public class AluguelService {
         }
     }
 
+    @Transactional
     public void retomarAluguel(Long aluguelId) {
         log.info("Retomando aluguel {}", aluguelId);
 
         // Busca a versão mais recente do banco
-        Aluguel a = aluguelRepository.findById(aluguelId).orElse(null);
+        Aluguel a = aluguelRepository.findByIdForUpdate(aluguelId);
         if (a == null) {
             log.warn("Aluguel {} não encontrado no banco de dados para retomada", aluguelId);
             return;
@@ -256,11 +269,12 @@ public class AluguelService {
         }
     }
 
+    @Transactional
     public Aluguel finalizarAluguel(Long id) {
         log.info("Finalizando aluguel manualmente {}", id);
 
         // Busca a versão mais recente do banco
-        Aluguel a = aluguelRepository.findById(id).orElse(null);
+        Aluguel a = aluguelRepository.findByIdForUpdate(id);
         if (a == null) {
             log.warn("Tentativa de finalizar aluguel inexistente: {}", id);
             return null;
