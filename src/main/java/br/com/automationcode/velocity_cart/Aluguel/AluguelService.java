@@ -24,6 +24,7 @@ import br.com.automationcode.velocity_cart.Produto.Produto;
 import br.com.automationcode.velocity_cart.Produto.ProdutoService;
 import br.com.automationcode.velocity_cart.Venda.VendaService;
 import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import jakarta.transaction.Transactional;
 
 @Service
@@ -349,4 +350,28 @@ public class AluguelService {
                     });
         });
     }
+
+    @PreDestroy
+    public void shutdownExecutor() {
+        System.out.println("Encerrando executores do AluguelService...");
+
+        scheduler.shutdown();
+        executor.shutdown();
+
+        try {
+            if (!scheduler.awaitTermination(5, TimeUnit.SECONDS)) {
+                scheduler.shutdownNow();
+            }
+            if (!executor.awaitTermination(5, TimeUnit.SECONDS)) {
+                executor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            scheduler.shutdownNow();
+            executor.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+
+        System.out.println("Executores finalizados com sucesso!");
+    }
+
 }

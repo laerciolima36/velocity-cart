@@ -8,6 +8,7 @@ import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Clip;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.google.cloud.texttospeech.v1.AudioConfig;
@@ -21,6 +22,9 @@ import com.google.protobuf.ByteString;
 @Service
 public class TextToSpeechService {
 
+    @Autowired
+    VozService vozesService;
+
     public void speak(String text) throws Exception {
         try (TextToSpeechClient textToSpeechClient = TextToSpeechClient.create()) {
 
@@ -33,7 +37,7 @@ public class TextToSpeechService {
             VoiceSelectionParams voice = VoiceSelectionParams.newBuilder()
                     .setLanguageCode("pt-BR")
                     // .setSsmlGender(SsmlVoiceGender.NEUTRAL)
-                    .setName("pt-BR-Standard-D") // você pode trocar por outras vozes
+                    .setName(vozesService.getVozAtiva()) // busca a voz ativa no banco
                     .build();
 
             // Configuração do áudio
@@ -69,4 +73,5 @@ public class TextToSpeechService {
             clip.close();
         }
     }
+   
 }
