@@ -40,7 +40,7 @@ public class Produto {
     @Column(nullable = false)
     private int quantidadeEstoque;
 
-    @Column(precision = 10, scale = 2, nullable = false)
+    @Column(precision = 10, scale = 2)
     private BigDecimal precoCusto;
 
     @Column(precision = 10, scale = 2, nullable = false)

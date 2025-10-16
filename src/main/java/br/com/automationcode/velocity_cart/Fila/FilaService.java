@@ -63,4 +63,11 @@ public class FilaService {
         filaRepository.save(fila);
     }
 
+    public int calcularTempoEspera(Long produtoId) {
+        List<Fila> filas = listarFilaPorProduto(produtoId);
+        return filas.stream()
+                .mapToInt(fila -> fila.getAluguel().getTempoEscolhido())
+                .sum();
+    }
+
 }

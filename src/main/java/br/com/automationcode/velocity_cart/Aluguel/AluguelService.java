@@ -60,7 +60,7 @@ public class AluguelService {
         log.info("Iniciando verificação automática de aluguéis...");
 
         aluguelRepository.findAll().stream()
-                .filter(a -> a.getFim() == null && "iniciado".equals(a.getEstado()))
+                .filter(a -> a.getFim() == null && "iniciado".equals(a.getEstado()) || a.getFim() == null && "pausado".equals(a.getEstado()))
                 .forEach(a -> {
                     alugueisAtivos.put(a.getId(), a);
                     log.debug("Aluguel ativo restaurado: {} - {}", a.getId(), a.getNomeResponsavel());
@@ -303,6 +303,14 @@ public class AluguelService {
                 .noneMatch(a -> produtoId.equals(a.getProduto().getId()) && a.getFim() == null);
         log.debug("Produto {} disponível? {}", produtoId, disponivel);
         return disponivel;
+    }
+
+    public int tempoRestanteByProduto(Long produtoId) {
+        return alugueisAtivos.values().stream()
+                .filter(a -> produtoId.equals(a.getProduto().getId()) && a.getFim() == null)
+                .mapToInt(Aluguel::getTempoRestante)
+                .findFirst()
+                .orElse(0);
     }
 
     public void reproduzirMensagem(Aluguel a, int codigo) {

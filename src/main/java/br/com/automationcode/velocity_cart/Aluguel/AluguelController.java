@@ -3,6 +3,7 @@ package br.com.automationcode.velocity_cart.Aluguel;
 import java.util.List;
 import java.util.concurrent.Executors;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -14,6 +15,9 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 @RestController
 @RequestMapping("api/aluguel")
 public class AluguelController {
+
+    @Autowired
+    private InformacoesService informacoesService;
 
     private final AluguelService aluguelService;
 
@@ -58,5 +62,10 @@ public class AluguelController {
         });
 
         return emitter;
+    }
+
+    @GetMapping("/informacoes")
+    public List<InfoDTO> getInformacoes() {
+        return informacoesService.getInfo();
     }
 }
