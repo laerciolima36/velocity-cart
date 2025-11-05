@@ -7,6 +7,8 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import jakarta.persistence.LockModeType;
+import java.util.List;
+
 
 @Repository
 public interface AluguelRepository extends JpaRepository<Aluguel, Long> {
@@ -14,4 +16,6 @@ public interface AluguelRepository extends JpaRepository<Aluguel, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT a FROM Aluguel a WHERE a.id = :id")
     Aluguel findByIdForUpdate(@Param("id") Long id);
+
+    List<Aluguel> findByFlagView(boolean flagView);
 }

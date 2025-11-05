@@ -26,6 +26,11 @@ public class Aluguel {
 
     private String estado;
 
+    private String atendente;
+    private String formaPagamento;
+
+    private boolean flagView;
+
     @ManyToOne
     private Produto produto;
 
@@ -37,6 +42,14 @@ public class Aluguel {
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public String getAtendente() {
+        return atendente;
+    }
+
+    public String getFormaPagamento() {
+        return formaPagamento;
     }
 
     public String getNomeResponsavel() {
@@ -125,6 +138,14 @@ public class Aluguel {
     
     public void setEstado(String estado) {
         this.estado = estado;
+    }
+
+    public boolean isFlagView() {
+        return flagView;
+    }
+
+    public void setFlagView(boolean flagView) {
+        this.flagView = flagView;
     }
 
     // Calcula tempo restante dinamicamente em segundos

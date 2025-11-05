@@ -4,9 +4,11 @@ import java.util.List;
 import java.util.concurrent.Executors;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -67,5 +69,33 @@ public class AluguelController {
     @GetMapping("/informacoes")
     public List<InfoDTO> getInformacoes() {
         return informacoesService.getInfo();
+    }
+
+    /**
+     * Retorna todos os aluguéis finalizados com flagView = true
+     */
+    @GetMapping("/finalizados")
+    public ResponseEntity<List<Aluguel>> getAlugueisFinalizadosByFlag() {
+        List<Aluguel> alugueis = aluguelService.getAlugueisFinalizadosByFlag();
+
+        if (alugueis.isEmpty()) {
+            return ResponseEntity.noContent().build();
+        }
+
+        return ResponseEntity.ok(alugueis);
+    }
+
+    /**
+     * Atualiza o flagView de um aluguel específico para false
+     */
+    @PutMapping("/finalizado/{id}")
+    public ResponseEntity<String> atualizarFlagView(@PathVariable("id") Long aluguelId) {
+        try {
+            aluguelService.setFlagView(aluguelId);
+            return ResponseEntity.ok("FlagView do aluguel " + aluguelId + " atualizada com sucesso.");
+        } catch (Exception e) {
+            // log.error("Erro ao atualizar flagView do aluguel {}: {}", aluguelId, e.getMessage(), e);
+            return ResponseEntity.internalServerError().body("Erro ao atualizar FlagView do aluguel.");
+        }
     }
 }

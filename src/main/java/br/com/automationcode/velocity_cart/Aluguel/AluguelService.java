@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -55,12 +56,43 @@ public class AluguelService {
         log.debug("AluguelService inicializado");
     }
 
+    public List<Aluguel> getAlugueisFinalizadosByFlag() {
+        return aluguelRepository.findByFlagView(true);
+    }
+
+    @Transactional
+    public void setFlagView(Long aluguelId) {
+        if (aluguelId == null) {
+            log.warn("ID do aluguel é nulo. Operação cancelada.");
+            return;
+        }
+
+        try {
+            Optional<Aluguel> optionalAluguel = aluguelRepository.findById(aluguelId);
+
+            if (optionalAluguel.isEmpty()) {
+                log.warn("Aluguel com ID {} não encontrado no banco para atualizar a Flag", aluguelId);
+                return;
+            }
+
+            Aluguel atual = optionalAluguel.get();
+            atual.setFlagView(false);
+            aluguelRepository.save(atual);
+
+            log.info("FlagView do aluguel {} atualizada para false", aluguelId);
+
+        } catch (Exception e) {
+            log.error("Erro ao atualizar FlagView do aluguel {}: {}", aluguelId, e.getMessage(), e);
+        }
+    }
+
     @PostConstruct
     public void iniciarVerificacao() {
         log.info("Iniciando verificação automática de aluguéis...");
 
         aluguelRepository.findAll().stream()
-                .filter(a -> a.getFim() == null && "iniciado".equals(a.getEstado()) || a.getFim() == null && "pausado".equals(a.getEstado()))
+                .filter(a -> a.getFim() == null && "iniciado".equals(a.getEstado())
+                        || a.getFim() == null && "pausado".equals(a.getEstado()))
                 .forEach(a -> {
                     alugueisAtivos.put(a.getId(), a);
                     log.debug("Aluguel ativo restaurado: {} - {}", a.getId(), a.getNomeResponsavel());
@@ -113,6 +145,7 @@ public class AluguelService {
             // Atualiza o estado e salva
             atual.setFim(LocalDateTime.now());
             atual.setEstado("finalizado");
+            atual.setFlagView(true);
             Aluguel salvo = salvarAluguelSeguramente(atual);
 
             // Remove dos alugueis ativos
@@ -169,6 +202,9 @@ public class AluguelService {
 
         Produto produto = produtoService.buscarPorId(aluguel.getProduto().getId());
 
+        if (produto == null)
+            throw new IllegalArgumentException("Produto não encontrado: " + aluguel.getProduto().getId());
+
         if (brinquedoDisponivel(produto.getId())) {
             log.debug("Produto {} disponível. Iniciando aluguel imediatamente.", produto.getId());
             return iniciarAluguel(aluguel, produto);
@@ -176,6 +212,7 @@ public class AluguelService {
             log.debug("Produto {} ocupado. Adicionando aluguel à fila.", produto.getId());
             return adicionarNaFila(aluguel, produto);
         }
+
     }
 
     @Transactional
@@ -192,7 +229,7 @@ public class AluguelService {
         Aluguel salvo = salvarAluguelSeguramente(aluguel);
         alugueisAtivos.put(salvo.getId(), salvo);
         log.debug("Aluguel {} adicionado a alugueisAtivos", salvo.getId());
-        vendaService.registrarVenda(salvo);
+        vendaService.registrarAluguel(salvo);
         return salvo;
     }
 
@@ -206,7 +243,7 @@ public class AluguelService {
         aluguel.setTempoRestanteAntesPausa(aluguel.getTempoEscolhido() * 60);
 
         Aluguel salvo = salvarAluguelSeguramente(aluguel);
-        vendaService.registrarVenda(salvo);
+        vendaService.registrarAluguel(salvo);
         filaService.adicionarNaFila(salvo);
         return salvo;
     }
