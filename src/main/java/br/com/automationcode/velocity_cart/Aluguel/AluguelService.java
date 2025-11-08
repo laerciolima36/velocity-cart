@@ -108,7 +108,7 @@ public class AluguelService {
     }
 
     public void verificarAlugueis() {
-        log.trace("Verificando aluguéis ativos ({} ativos)...", alugueisAtivos.size());
+        // log.trace("Verificando aluguéis ativos ({} ativos)...", alugueisAtivos.size());
 
         List<Aluguel> snapshot = new ArrayList<>(alugueisAtivos.values());
 
@@ -331,7 +331,7 @@ public class AluguelService {
     }
 
     public List<Aluguel> getTodosAlugueis() {
-        log.trace("Listando todos os alugueis ativos");
+        // log.trace("Listando todos os alugueis ativos");
         return List.copyOf(alugueisAtivos.values());
     }
 
