@@ -1,6 +1,9 @@
 package br.com.automationcode.velocity_cart.Contrato;
 
 import java.math.BigDecimal;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import jakarta.persistence.*;
 import lombok.*;
 import br.com.automationcode.velocity_cart.Produto.Produto;
@@ -21,6 +24,7 @@ public class ItemContrato {
     // Relação com o contrato principal
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "contrato_id")
+    @JsonIgnore
     private Contrato contrato;
 
     // Produto (brinquedo)

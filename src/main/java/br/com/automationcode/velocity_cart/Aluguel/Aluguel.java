@@ -48,8 +48,16 @@ public class Aluguel {
         return atendente;
     }
 
+    public void setAtendente(String atendente) {
+        this.atendente = atendente;
+    }
+
     public String getFormaPagamento() {
         return formaPagamento;
+    }
+
+    public void setFormaPagamento(String formaPagamento) {
+        this.formaPagamento = formaPagamento;
     }
 
     public String getNomeResponsavel() {

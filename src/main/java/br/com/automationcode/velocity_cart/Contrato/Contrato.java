@@ -1,10 +1,28 @@
 package br.com.automationcode.velocity_cart.Contrato;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
-import jakarta.persistence.*;
-import lombok.*;
+
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Lob;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Getter
@@ -30,7 +48,22 @@ public class Contrato {
     private String enderecoContratante;
 
     @Column(nullable = false)
+    private String numeroEndContratante;
+
+    @Column(nullable = false)
+    private String bairroContratante;
+
+    @Column(nullable = false)
     private String telefoneContratante;
+
+    private LocalDate dataInicio;
+
+    private LocalTime horaInicio;
+
+    private boolean finalizado;
+
+    @Lob
+    private String assinatura; // Aqui fica a string base64
 
     // Valor total do contrato
     @Column(name = "valor_total", precision = 10, scale = 2)
