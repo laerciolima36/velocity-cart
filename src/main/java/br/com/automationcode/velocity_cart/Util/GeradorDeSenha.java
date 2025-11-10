@@ -5,7 +5,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 public class GeradorDeSenha {
 
     public static void main(String[] args) {
-        String senha = "JavaDev@2025";
+        String senha = "velocity";
         BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
         String senhaCriptografada = encoder.encode(senha);
         System.out.println("Senha criptografada: " + senhaCriptografada);
