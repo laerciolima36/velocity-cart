@@ -108,7 +108,8 @@ public class AluguelService {
     }
 
     public void verificarAlugueis() {
-        // log.trace("Verificando aluguéis ativos ({} ativos)...", alugueisAtivos.size());
+        // log.trace("Verificando aluguéis ativos ({} ativos)...",
+        // alugueisAtivos.size());
 
         List<Aluguel> snapshot = new ArrayList<>(alugueisAtivos.values());
 
@@ -419,4 +420,17 @@ public class AluguelService {
         System.out.println("Executores finalizados com sucesso!");
     }
 
+    public void reproduzirAudioFinal(Long aluguelId) {
+        try {
+            Aluguel a = aluguelRepository.findById(aluguelId).orElse(new Aluguel());
+
+            for (int i = 0; i < 3; i++) {
+                log.trace("Mensagem finalização para {}", a.getNomeResponsavel());
+                textToSpeechService.speak(a.getNomeResponsavel() + ", o aluguel do brinquedo "
+                        + a.getProduto().getNome() + " terminou.");
+            }
+        } catch (Exception e) {
+            log.error("Erro ao reproduzir mensagem final para aluguel {}", e);
+        }
+    }
 }

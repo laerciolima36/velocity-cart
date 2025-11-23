@@ -98,4 +98,15 @@ public class AluguelController {
             return ResponseEntity.internalServerError().body("Erro ao atualizar FlagView do aluguel.");
         }
     }
+
+    @PostMapping("/audiofinal/{id}")
+    public ResponseEntity<String> reproduzirAudioFinal(@PathVariable("id") Long aluguelId) {
+        try {
+            aluguelService.reproduzirAudioFinal(aluguelId);
+            return ResponseEntity.ok("Audio Reproduzido " + aluguelId + ".");
+        } catch (Exception e) {
+            // log.error("Erro ao atualizar flagView do aluguel {}: {}", aluguelId, e.getMessage(), e);
+            return ResponseEntity.internalServerError().body("Erro ao reproduzir o audio do aluguel.");
+        }
+    }
 }
