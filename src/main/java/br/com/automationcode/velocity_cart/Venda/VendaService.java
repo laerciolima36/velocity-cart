@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 
 import br.com.automationcode.velocity_cart.Aluguel.Aluguel;
 import br.com.automationcode.velocity_cart.Produto.ProdutoService;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -66,6 +67,21 @@ public class VendaService {
 
         
         this.save(venda);
+    }
+
+    @Transactional
+    public void deletar(Long id) {
+        Venda venda = buscarPorId(id);
+        vendaRepository.delete(venda);
+    }
+
+    public Venda buscarPorId(Long id) {
+        if (id == null || id <= 0) {
+            throw new IllegalArgumentException("ID da venda inválido.");
+        }
+
+        return vendaRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Venda não encontrada!"));
     }
 
 }

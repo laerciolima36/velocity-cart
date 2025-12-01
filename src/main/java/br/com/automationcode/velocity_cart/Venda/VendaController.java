@@ -10,7 +10,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -60,6 +62,13 @@ public class VendaController {
 
         List<Venda> vendas = vendaService.buscarPorPeriodo(dataInicio, dataFim);
         return ResponseEntity.ok(vendas);
+    }
+
+    @Operation(summary = "Deleta a venda de acordo com o ID")
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deletarVenda(@PathVariable Long id) {
+        vendaService.deletar(id);
+        return ResponseEntity.noContent().build();
     }
     
 }
