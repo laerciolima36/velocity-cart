@@ -59,4 +59,14 @@ public class InformacoesService {
         return listaInfo;
     }
 
+    public List<Fila> getFilaDetails(){
+        try {
+            aluguelService.atualizarTempoParaFila();
+        } catch (Exception e) {
+            System.err.println("Erro ao atualizar tempo para fila: " + e.getMessage());
+        }
+        
+        return filaService.getTodosFilas();
+    }
+
 }

@@ -2,15 +2,16 @@ package br.com.automationcode.velocity_cart.Aluguel;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,6 +21,7 @@ import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 
 import br.com.automationcode.velocity_cart.Audio.TextToSpeechService;
+import br.com.automationcode.velocity_cart.Fila.Fila;
 import br.com.automationcode.velocity_cart.Fila.FilaService;
 import br.com.automationcode.velocity_cart.Produto.Produto;
 import br.com.automationcode.velocity_cart.Produto.ProdutoService;
@@ -170,7 +172,7 @@ public class AluguelService {
     @Transactional
     public void iniciarAluguelFila(Aluguel proximo) {
         log.info("Iniciando aluguel a partir da fila: {}", proximo.getId());
-        proximo.setEstado("iniciado");
+        proximo.setEstado("fila");
         proximo.setInicio(LocalDateTime.now());
         proximo.setUltimaPausa(LocalDateTime.now());
         proximo.setPausado(true);
@@ -382,19 +384,66 @@ public class AluguelService {
         });
     }
 
+    // public void atualizarTempoParaFila() {
+    // log.trace("Atualizando tempo para fila...");
+    // List<Aluguel> ativos = getTodosAlugueis();
+    // filaService.getTodosFilas().forEach(fila -> {
+    // ativos.stream()
+    // .filter(a -> Objects.equals(a.getProduto().getId(),
+    // fila.getAluguel().getProduto().getId()))
+    // .findFirst()
+    // .ifPresent(a -> {
+    // fila.setTempoParaIniciar(calcularMinutosRestantes(a.getTempoRestante()));
+    // filaService.save(fila);
+    // log.debug("Fila {} atualizada com tempo restante do aluguel {}",
+    // fila.getId(), a.getId());
+    // });
+    // });
+    // }
+
     public void atualizarTempoParaFila() {
         log.trace("Atualizando tempo para fila...");
-        List<Aluguel> ativos = getTodosAlugueis();
-        filaService.getTodosFilas().forEach(fila -> {
-            ativos.stream()
-                    .filter(a -> Objects.equals(a.getProduto().getId(), fila.getAluguel().getProduto().getId()))
-                    .findFirst()
-                    .ifPresent(a -> {
-                        fila.setTempoParaIniciar(a.getTempoRestante());
-                        filaService.save(fila);
-                        log.debug("Fila {} atualizada com tempo restante do aluguel {}", fila.getId(), a.getId());
-                    });
-        });
+
+        List<Aluguel> alugueisAtivos = getTodosAlugueis();
+        List<Fila> filas = filaService.getTodosFilas();
+
+        // Agrupa filas por produto
+        Map<Long, List<Fila>> filasPorProduto = filas.stream()
+                .collect(Collectors.groupingBy(f -> f.getAluguel().getProduto().getId()));
+
+        for (Aluguel aluguel : alugueisAtivos) {
+
+            Long produtoId = aluguel.getProduto().getId();
+            List<Fila> filasDoProduto = filasPorProduto.get(produtoId);
+
+            if (filasDoProduto == null || filasDoProduto.isEmpty()) {
+                continue;
+            }
+
+            // Ordena a fila (ajuste o critério se necessário)
+            filasDoProduto.sort(Comparator.comparing(Fila::getDataEntrada));
+
+            long tempoAcumulado = calcularMinutosRestantes(aluguel.getTempoRestante());
+
+            for (Fila fila : filasDoProduto) {
+                fila.setTempoParaIniciar(tempoAcumulado);
+                filaService.save(fila);
+
+                log.debug(
+                        "Fila {} atualizada | Produto {} | Tempo para iniciar: {} min",
+                        fila.getId(), produtoId, tempoAcumulado);
+
+                // Soma o tempo do próprio aluguel da fila
+                tempoAcumulado += fila.getAluguel().getTempoEscolhido();
+            }
+        }
+    }
+
+    private long calcularMinutosRestantes(int tempoEmSegundos) {
+        if (tempoEmSegundos <= 0) {
+            return 0L;
+        }
+        return (long) Math.ceil(tempoEmSegundos / 60.0);
     }
 
     @PreDestroy
