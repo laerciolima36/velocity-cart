@@ -1,19 +1,22 @@
 package br.com.automationcode.velocity_cart.FrontController;
 
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 
 @Controller
 public class FrontController {
 
-    // Para rotas simples como /dashboard
-    @RequestMapping(value = "/{path:[^\\.]*}")
+    @GetMapping(value = "/")
+    public String root() {
+        return "forward:/index.html";
+    }
+
+    @GetMapping(value = "/{path:[^\\.]*}")
     public String forward() {
         return "forward:/index.html";
     }
 
-    // Para rotas aninhadas como /dashboard/relatorios
-    @RequestMapping(value = "/**/{path:[^\\.]*}")
+    @GetMapping(value = "/**/{path:[^\\.]*}")
     public String forwardNested() {
         return "forward:/index.html";
     }
