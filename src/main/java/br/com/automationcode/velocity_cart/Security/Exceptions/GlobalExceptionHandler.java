@@ -22,9 +22,9 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<ApiResponse> handleNoResourceFoundException(NoResourceFoundException ex) {
-        logger.error("🔔 Erro Interno: {}", ex);
-        return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
-                .body(new ApiResponse(false, "Erro ao acessar imagens: " + ex.getMessage(), null));
+        logger.debug("Recurso estático não encontrado: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ApiResponse(false, ex.getMessage(), null));
     }
 
     @ExceptionHandler(IOException.class)
